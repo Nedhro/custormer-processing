@@ -1,6 +1,7 @@
 package com.project.customerprocessing.service;
 
 import com.mongodb.client.MongoCollection;
+import com.mongodb.client.model.FindOneAndUpdateOptions;
 import com.project.customerprocessing.model.Customer;
 import com.project.customerprocessing.model.dto.CustomerDto;
 import com.project.customerprocessing.repository.CustomerRepository;
@@ -15,50 +16,50 @@ import java.io.*;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
 
 /**
  * Service class for processing customers.
  */
 @Service
 public class CustomerService {
-
+  
   private final MongoTemplate mongoTemplate;
   private final ResourceLoader resourceLoader;
   private final CustomerRepository customerRepository;
   private final ExecutorService executor = Executors.newFixedThreadPool(4);
-
+  
   /**
    * Constructor for CustomerService.
-   *  @param mongoTemplate   the MongoTemplate instance
-   * @param resourceLoader  the ResourceLoader instance
+   *
+   * @param mongoTemplate  the MongoTemplate instance
+   * @param resourceLoader the ResourceLoader instance
    */
   public CustomerService(MongoTemplate mongoTemplate, ResourceLoader resourceLoader, CustomerRepository customerRepository) {
     this.mongoTemplate = mongoTemplate;
     this.resourceLoader = resourceLoader;
     this.customerRepository = customerRepository;
   }
-
+  
   /**
    * Created for future use
    */
   public Customer saveCustomer(Customer customer) {
     return customerRepository.save(customer);
   }
-
+  
   public Optional<Customer> getCustomerById(String customerId) {
     return customerRepository.findById(customerId);
   }
-
+  
   public List<Customer> getAllCustomers() {
     return customerRepository.findAll();
   }
-
+  
   public void deleteCustomerById(String customerId) {
     customerRepository.deleteById(customerId);
   }
   /**/
-
+  
   /**
    * Process the customer data from a file.
    *
@@ -74,10 +75,10 @@ public class CustomerService {
       executor.submit(() -> storeInvalidCustomers(invalidCustomers));
       executor.submit(() -> exportValidCustomers(validCustomers, outputDirectory));
       executor.submit(() -> exportInvalidCustomers(invalidCustomers, outputDirectory));
-
+      
       // Shut down the executor once all tasks are completed
       executor.shutdown();
-
+      
       // Return true at the end if file processing is successful
       return true;
     } catch (Exception e) {
@@ -86,8 +87,8 @@ public class CustomerService {
       return false;
     }
   }
-
-
+  
+  
   /**
    * Reads customer data from a file.
    *
@@ -97,11 +98,10 @@ public class CustomerService {
     try {
       List<CustomerDto> customers = new ArrayList<>();
       List<CustomerDto> invalidCustomers = new ArrayList<>();
-
+      
       Resource resource = resourceLoader.getResource("classpath:static/files/1M-customers.txt");
-
-      try (InputStream inputStream = resource.getInputStream();
-           BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+      
+      try (InputStream inputStream = resource.getInputStream(); BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
         String line;
         while ((line = reader.readLine()) != null) {
           try {
@@ -123,16 +123,16 @@ public class CustomerService {
           }
         }
       }
-
+      
       executor.submit(() -> storeInvalidCustomers(invalidCustomers));
-
+      
       return customers;
     } catch (IOException e) {
       e.printStackTrace();
     }
     return null;
   }
-
+  
   /**
    * Filters the valid customers from the given list.
    *
@@ -143,7 +143,7 @@ public class CustomerService {
     List<CustomerDto> validCustomers = new ArrayList<>();
     Set<String> phoneSet = new HashSet<>();
     Set<String> emailSet = new HashSet<>();
-
+    
     for (CustomerDto customer : customers) {
       if (isValidCustomer(customer, phoneSet, emailSet)) {
         validCustomers.add(customer);
@@ -151,25 +151,22 @@ public class CustomerService {
         emailSet.add(customer.getEmail());
       }
     }
-
+    
     return validCustomers;
   }
-
+  
   /**
    * Checks if a customer is valid based on the provided criteria.
    *
-   * @param customer  the customer to validate
-   * @param phoneSet  the set of unique phone numbers
-   * @param emailSet  the set of unique email addresses
+   * @param customer the customer to validate
+   * @param phoneSet the set of unique phone numbers
+   * @param emailSet the set of unique email addresses
    * @return true if the customer is valid, false otherwise
    */
   private boolean isValidCustomer(CustomerDto customer, Set<String> phoneSet, Set<String> emailSet) {
-    return isValidPhoneNumber(customer.getPhone())
-        && isValidEmail(customer.getEmail())
-        && !phoneSet.contains(customer.getPhone())
-        && !emailSet.contains(customer.getEmail());
+    return isValidPhoneNumber(customer.getPhone()) && isValidEmail(customer.getEmail()) && !phoneSet.contains(customer.getPhone()) && !emailSet.contains(customer.getEmail());
   }
-
+  
   /**
    * Filters the invalid customers from the given list.
    *
@@ -180,7 +177,7 @@ public class CustomerService {
     List<CustomerDto> invalidCustomers = new ArrayList<>();
     Set<String> phoneSet = new HashSet<>();
     Set<String> emailSet = new HashSet<>();
-
+    
     for (CustomerDto customer : customers) {
       if (!isValidCustomer(customer, phoneSet, emailSet)) {
         invalidCustomers.add(customer);
@@ -188,7 +185,7 @@ public class CustomerService {
     }
     return invalidCustomers;
   }
-
+  
   /**
    * Stores the valid customers to the database.
    *
@@ -198,7 +195,7 @@ public class CustomerService {
     MongoCollection<Document> validCustomersCollection = mongoTemplate.getCollection("valid_customers");
     storeToDB(validCustomers, validCustomersCollection);
   }
-
+  
   /**
    * Stores the invalid customers to the database.
    *
@@ -208,7 +205,7 @@ public class CustomerService {
     MongoCollection<Document> invalidCustomersCollection = mongoTemplate.getCollection("invalid_customers");
     storeToDB(invalidCustomers, invalidCustomersCollection);
   }
-
+  
   /**
    * Stores a list of customers to the specified database collection.
    *
@@ -216,46 +213,38 @@ public class CustomerService {
    * @param customersCollection the database collection to store the customers
    */
   private void storeToDB(List<CustomerDto> customerDtoList, MongoCollection<Document> customersCollection) {
-    List<Document> customerList = customerDtoList.stream()
-        .map(customerDto -> new Document("name", customerDto.getName())
-            .append("branch", customerDto.getBranch())
-            .append("city", customerDto.getCity())
-            .append("state", customerDto.getState())
-            .append("zip", customerDto.getZip())
-            .append("phone", customerDto.getPhone())
-            .append("email", customerDto.getEmail())
-            .append("ip", customerDto.getIp()))
-        .collect(Collectors.toList());
-    customersCollection.insertMany(customerList);
+    for (CustomerDto customerDto : customerDtoList) {
+      Document filter = new Document("email", customerDto.getEmail()).append("phone", customerDto.getPhone());
+      Document update = new Document("$set", new Document("name", customerDto.getName())
+          .append("branch", customerDto.getBranch())
+          .append("city", customerDto.getCity())
+          .append("state", customerDto.getState())
+          .append("zip", customerDto.getZip())
+          .append("ip", customerDto.getIp()));
+      customersCollection.findOneAndUpdate(filter, update, new FindOneAndUpdateOptions().upsert(true));
+    }
   }
-
+  
   /**
    * Exports the valid customers to files in batches.
    *
-   * @param validCustomers   the list of valid customers
-   * @param outputDirectory  the output directory for exporting data
+   * @param validCustomers  the list of valid customers
+   * @param outputDirectory the output directory for exporting data
    */
   private void exportValidCustomers(List<CustomerDto> validCustomers, String outputDirectory) {
     long startTime = System.currentTimeMillis();
     int batchSize = 100000;
     int batchCount = (int) Math.ceil((double) validCustomers.size() / batchSize);
-
+    
     for (int i = 0; i < batchCount; i++) {
       int startIndex = i * batchSize;
       int endIndex = Math.min(startIndex + batchSize, validCustomers.size());
       List<CustomerDto> batchCustomers = validCustomers.subList(startIndex, endIndex);
-
+      
       String fileName = outputDirectory + "/valid_customers_batch_" + (i + 1) + ".txt";
       try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName))) {
         for (CustomerDto customer : batchCustomers) {
-          String line = customer.getName() + "," +
-              customer.getBranch() + "," +
-              customer.getCity() + "," +
-              customer.getState() + "," +
-              customer.getZip() + "," +
-              customer.getPhone() + "," +
-              customer.getEmail() + "," +
-              customer.getIp();
+          String line = customer.getName() + "," + customer.getBranch() + "," + customer.getCity() + "," + customer.getState() + "," + customer.getZip() + "," + customer.getPhone() + "," + customer.getEmail() + "," + customer.getIp();
           writer.write(line);
           writer.newLine();
         }
@@ -263,11 +252,11 @@ public class CustomerService {
         e.printStackTrace();
       }
     }
-
+    
     long endTime = System.currentTimeMillis();
     System.out.println("Exporting valid customers took " + (endTime - startTime) + "ms.");
   }
-
+  
   /**
    * Exports the invalid customers to files in batches.
    *
@@ -278,12 +267,12 @@ public class CustomerService {
     long startTime = System.currentTimeMillis();
     int batchSize = 100000;
     int batchCount = (int) Math.ceil((double) invalidCustomers.size() / batchSize);
-
+    
     for (int i = 0; i < batchCount; i++) {
       int startIndex = i * batchSize;
       int endIndex = Math.min(startIndex + batchSize, invalidCustomers.size());
       List<CustomerDto> batchCustomers = invalidCustomers.subList(startIndex, endIndex);
-
+      
       String fileName = outputDirectory + "/invalid_customers_batch_" + (i + 1) + ".txt";
       try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName))) {
         for (CustomerDto customer : batchCustomers) {
@@ -294,11 +283,11 @@ public class CustomerService {
         e.printStackTrace();
       }
     }
-
+    
     long endTime = System.currentTimeMillis();
     System.out.println("Exporting invalid customers took " + (endTime - startTime) + "ms.");
   }
-
+  
   /**
    * Checks if a phone number is valid.
    *
@@ -306,9 +295,11 @@ public class CustomerService {
    * @return true if the phone number is valid, false otherwise
    */
   private boolean isValidPhoneNumber(String phone) {
-    return StringUtils.isNumeric(phone) && phone.length() == 10;
+    // Remove any non-digit characters from the phone number
+    String numericPhone = phone.replaceAll("\\D", "");
+    return StringUtils.isNumeric(numericPhone) && numericPhone.length() == 10;
   }
-
+  
   /**
    * Checks if an email address is valid.
    *
@@ -316,7 +307,10 @@ public class CustomerService {
    * @return true if the email address is valid, false otherwise
    */
   private boolean isValidEmail(String email) {
-    // Add email validation logic here (e.g., regex)
-    return StringUtils.isNotBlank(email);
+    // Regex pattern for email validation
+    String emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$";
+    
+    // Validate email against the pattern
+    return StringUtils.isNotBlank(email) && email.matches(emailRegex);
   }
 }
