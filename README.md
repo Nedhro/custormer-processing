@@ -36,8 +36,8 @@ Open the application.properties file located in the src/main/resources directory
 Configure the MongoDB connection settings:
 - Set the spring.data.mongodb.host property to [MongoDB host].
 - Set the spring.data.mongodb.port property to [MongoDB port].
-- Set the spring.data.mongodb.database property to [database name].
-- Set the spring.data.mongodb.username and spring.data.mongodb.password properties if authentication is enabled.
+- Set the spring.data.mongodb.database property to [customerdb]. (I have used)
+- Set the spring.data.mongodb.username[root] and spring.data.mongodb.password[1234] properties if authentication is enabled.
 
 ## Usage
 In the project resource folder the large-scale customer data file (1M-customers.txt) is designated.
